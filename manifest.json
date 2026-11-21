@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "AI Chat Exporter",
+  "version": "1.0.0",
+  "description": "Экспорт полной истории чата из ChatGPT, Claude, Gemini и Google AI Mode в JSON или Markdown.",
+  "permissions": ["activeTab", "scripting", "downloads", "clipboardWrite"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Экспортировать чат"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.google.com/search*"
+      ],
+      "js": [
+        "src/common.js",
+        "src/extractors/chatgpt.js",
+        "src/extractors/claude.js",
+        "src/extractors/gemini.js",
+        "src/extractors/google-ai.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
