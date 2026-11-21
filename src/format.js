@@ -27,6 +27,33 @@
     return `${n} сообщений`;
   };
 
+  // Сервисы, в которые можно перенести чат
+  ACE.TARGETS = [
+    { id: "chatgpt", name: "ChatGPT", url: "https://chatgpt.com/" },
+    { id: "claude", name: "Claude", url: "https://claude.ai/new" },
+    { id: "gemini", name: "Gemini", url: "https://gemini.google.com/app" },
+  ];
+
+  // Текст для переноса чата в другую нейронку: вводная + вся переписка по ролям.
+  ACE.toTransferPrompt = (chat) => {
+    const lines = chat.messages.map((m) => {
+      const who = m.role === "user" ? "Пользователь" : `Ассистент (${chat.source_name})`;
+      const att = m.attachments ? `\n[Вложения: ${m.attachments.join(", ")}]` : "";
+      return `### ${who}\n${m.content}${att}`;
+    });
+    return [
+      `Ниже — моя переписка с ${chat.source_name} на тему «${chat.title}» (${ACE.messagesWord(chat.message_count)}).`,
+      `Я хочу продолжить этот разговор с тобой. Внимательно учти весь контекст: что я спрашивал, что уже было предложено и на чём мы остановились.`,
+      `Сначала коротко (3–5 пунктов) перескажи, о чём шла речь и на чём мы остановились, а потом жди мой следующий вопрос.`,
+      ``,
+      `=== НАЧАЛО ПЕРЕПИСКИ ===`,
+      ``,
+      lines.join("\n\n"),
+      ``,
+      `=== КОНЕЦ ПЕРЕПИСКИ ===`,
+    ].join("\n");
+  };
+
   ACE.toJson = (chat) => JSON.stringify(chat, null, 2);
 
   ACE.toMarkdown = (chat) => {

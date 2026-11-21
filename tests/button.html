@@ -14,7 +14,14 @@
 <script>
   // Заглушки chrome.* для запуска вне расширения
   window.chrome = {
-    runtime: { onMessage: { addListener() {} } },
+    runtime: {
+      onMessage: { addListener() {} },
+      // Заглушка background: запоминаем, что попросили открыть
+      sendMessage: async (msg) => {
+        if (msg.type === "ACE_TRANSFER") { window.__lastTransfer = msg; return { ok: true }; }
+        return null;
+      },
+    },
     storage: {
       local: { get: async (d) => d, set: async () => {} },
       onChanged: { addListener() {} },
@@ -30,5 +37,6 @@
   __ACE__.extractors[0].match = () => true;
 </script>
 <script src="../src/ui.js"></script>
+<script src="../src/transfer.js"></script>
 </body>
 </html>

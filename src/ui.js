@@ -107,6 +107,8 @@
     }
     .menu button:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
     .menu button:disabled { opacity: .45; cursor: default; }
+    .menu .title.sep { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 9px; }
+    .menu .targets button::after { content: "↗"; float: right; color: var(--muted); }
     .menu .hint { padding: 6px 10px 6px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); margin-top: 4px; }
 
     .toast {
@@ -206,6 +208,8 @@
           <button data-act="json" role="menuitem">Скачать JSON</button>
           <button data-act="md" role="menuitem">Скачать Markdown</button>
           <button data-act="copy" role="menuitem">Скопировать JSON</button>
+          <div class="title sep">Продолжить в…</div>
+          <div class="targets"></div>
           <div class="hint">Кнопку можно перетащить · двойной клик — вернуть к полю ввода</div>
         </div>
         <div class="pop intro" role="dialog" aria-label="AI Chat Exporter">
@@ -226,6 +230,13 @@
     const menu = root.querySelector(".menu");
     const toast = root.querySelector(".toast");
     let toastTimer = null;
+
+    // Пункты «Продолжить в…» — все сервисы, кроме текущего
+    const here = ACE.findExtractor && ACE.findExtractor();
+    root.querySelector(".targets").innerHTML = (ACE.TARGETS || [])
+      .filter((t) => !here || t.id !== here.id)
+      .map((t) => `<button data-target="${t.id}" role="menuitem">${t.name}</button>`)
+      .join("");
 
     // ---------- Позиция и перетаскивание ----------
     // Пока пользователь не двигал кнопку — она «приклеена» к полю ввода (auto).
@@ -358,7 +369,24 @@
       applyPos();
     }
 
+    ACE.notify = showToast;
+
     menu.addEventListener("click", async (e) => {
+      const tbtn = e.target.closest("button[data-target]");
+      if (tbtn) {
+        setOpen(false);
+        setBusy(true);
+        try {
+          const r = await ACE.transferTo(tbtn.dataset.target);
+          const long = r.length > 60000 ? "\nЧат длинный — сервис может прикрепить его файлом." : "";
+          showToast(`Открыл ${r.target.name}: ${ACE.messagesWord(r.chat.message_count)} будут вставлены в поле ввода.${long}`, "ok", 6000);
+        } catch (err) {
+          showToast("Ошибка: " + (err.message || err), "error", 6000);
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
       const btn = e.target.closest("button[data-act]");
       if (!btn) return;
       const act = btn.dataset.act;
@@ -395,6 +423,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
+  ACE.copyText = (text) => copyText(text);
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);

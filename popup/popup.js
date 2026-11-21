@@ -7,11 +7,12 @@ const CONTENT_FILES = [
   "src/extractors/google-ai.js",
   "src/content.js",
   "src/ui.js",
+  "src/transfer.js",
 ];
 
 const ACE = globalThis.__ACE__; // из src/format.js
 const $ = (id) => document.getElementById(id);
-const buttons = ["btn-json", "btn-md", "btn-copy"].map($);
+let buttons = ["btn-json", "btn-md", "btn-copy"].map($);
 let tabId = null;
 let cached = null;
 
@@ -72,6 +73,42 @@ async function handle(action) {
   }
 }
 
+// Перенос чата в другую нейронку
+async function transfer(target) {
+  setBusy(true);
+  try {
+    const chat = await getChat();
+    const text = ACE.toTransferPrompt(chat);
+    // Страховка: если вставить автоматически не выйдет, текст уже будет в буфере обмена
+    try { await navigator.clipboard.writeText(text); } catch (_) {}
+    const r = await chrome.runtime.sendMessage({
+      type: "ACE_TRANSFER",
+      url: target.url,
+      text,
+      source: chat.source_name,
+      target: target.name,
+    });
+    if (!r || !r.ok) throw new Error((r && r.error) || "Не удалось открыть вкладку");
+    window.close();
+  } catch (e) {
+    setStatus("Ошибка: " + (e.message || e), "error");
+    setBusy(false);
+  }
+}
+
+function renderTargets(currentSite) {
+  const box = $("targets");
+  box.innerHTML = "";
+  for (const t of ACE.TARGETS.filter((t) => t.name !== currentSite)) {
+    const b = document.createElement("button");
+    b.textContent = t.name;
+    b.disabled = true;
+    b.addEventListener("click", () => transfer(t));
+    box.appendChild(b);
+  }
+  buttons = [...["btn-json", "btn-md", "btn-copy"].map($), ...box.querySelectorAll("button")];
+}
+
 $("btn-json").addEventListener("click", () => handle("json"));
 $("btn-md").addEventListener("click", () => handle("md"));
 $("btn-copy").addEventListener("click", () => handle("copy"));
@@ -106,6 +143,7 @@ if (chrome.storage && chrome.storage.local) {
       return;
     }
     $("site").textContent = r.site || host;
+    renderTargets(r.site);
     setStatus("Откройте нужный чат и нажмите кнопку.");
     setBusy(false);
   } catch (e) {
