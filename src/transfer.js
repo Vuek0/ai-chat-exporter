@@ -69,7 +69,7 @@
   // ---------- Исходная вкладка ----------
   ACE.transferTo = async (targetId) => {
     const target = ACE.TARGETS.find((t) => t.id === targetId);
-    if (!target) throw new Error("Неизвестный сервис");
+    if (!target) throw new Error(ACE.t("errUnknownTarget"));
     const chat = await ACE.run();
     const text = ACE.toTransferPrompt(chat);
     // Страховка: если вставить автоматически не выйдет, текст уже будет в буфере обмена
@@ -86,7 +86,7 @@
       source: chat.source_name,
       target: target.name,
     });
-    if (!r || !r.ok) throw new Error((r && r.error) || "Не удалось открыть вкладку");
+    if (!r || !r.ok) throw new Error((r && r.error) || ACE.t("errOpenTab"));
     return { chat, target, copied, length: text.length };
   };
 
@@ -102,7 +102,7 @@
 
     const el = await waitFor(findInput);
     if (!el) {
-      notify("Не нашёл поле ввода. Текст чата в буфере обмена — вставьте его через Ctrl+V.", "error", 10000);
+      notify(ACE.t("errNoInput"), "error", 10000);
       return;
     }
     await ACE.sleep(600); // даём редактору инициализироваться
@@ -112,9 +112,9 @@
     } catch (_) {}
     chrome.runtime.sendMessage({ type: "ACE_TRANSFER_DONE" }).catch(() => {});
     if (ok) {
-      notify(`Чат из ${data.source} вставлен. Проверьте текст и отправьте сообщение.`, "ok", 8000);
+      notify(ACE.t("transferInserted", data.source), "ok", 8000);
     } else {
-      notify("Не удалось вставить автоматически. Текст чата в буфере обмена — нажмите Ctrl+V.", "error", 10000);
+      notify(ACE.t("errInsert"), "error", 10000);
     }
   }
 

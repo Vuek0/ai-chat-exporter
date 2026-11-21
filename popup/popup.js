@@ -11,6 +11,11 @@ const CONTENT_FILES = [
 ];
 
 const ACE = globalThis.__ACE__; // из src/format.js
+const t = ACE.t;
+
+// Тексты разметки: <… data-i18n="key">
+document.documentElement.lang = chrome.i18n.getUILanguage();
+for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
 const $ = (id) => document.getElementById(id);
 let buttons = ["btn-json", "btn-md", "btn-copy"].map($);
 let tabId = null;
@@ -39,9 +44,9 @@ async function ensureInjected() {
 
 async function getChat() {
   if (cached) return cached;
-  setStatus("Собираю сообщения… (для длинных чатов Gemini это может занять время)");
+  setStatus(t("statusCollecting"));
   const r = await send({ type: "ACE_EXTRACT" });
-  if (!r || !r.ok) throw new Error((r && r.error) || "Нет ответа от страницы");
+  if (!r || !r.ok) throw new Error((r && r.error) || t("errNoResponse"));
   cached = r.data;
   return cached;
 }
@@ -64,10 +69,10 @@ async function handle(action) {
     if (action === "md") await download(ACE.toMarkdown(chat), base + ".md", "text/markdown");
     if (action === "copy") await navigator.clipboard.writeText(ACE.toJson(chat));
     const warn = chat.warnings && chat.warnings.length ? `\n⚠ ${chat.warnings.join(" ")}` : "";
-    const done = action === "copy" ? "Скопировано" : "Готово";
-    setStatus(`${done}: ${ACE.messagesWord(chat.message_count)}.${warn}`, warn ? "" : "ok");
+    const done = t(action === "copy" ? "copied" : "done");
+    setStatus(t("resultLine", done, ACE.messagesWord(chat.message_count)) + warn, warn ? "" : "ok");
   } catch (e) {
-    setStatus("Ошибка: " + (e.message || e), "error");
+    setStatus(t("errPrefix", e.message || e), "error");
   } finally {
     setBusy(false);
   }
@@ -88,10 +93,10 @@ async function transfer(target) {
       source: chat.source_name,
       target: target.name,
     });
-    if (!r || !r.ok) throw new Error((r && r.error) || "Не удалось открыть вкладку");
+    if (!r || !r.ok) throw new Error((r && r.error) || t("errOpenTab"));
     window.close();
   } catch (e) {
-    setStatus("Ошибка: " + (e.message || e), "error");
+    setStatus(t("errPrefix", e.message || e), "error");
     setBusy(false);
   }
 }
@@ -99,11 +104,11 @@ async function transfer(target) {
 function renderTargets(currentSite) {
   const box = $("targets");
   box.innerHTML = "";
-  for (const t of ACE.TARGETS.filter((t) => t.name !== currentSite)) {
+  for (const target of ACE.TARGETS.filter((x) => x.name !== currentSite)) {
     const b = document.createElement("button");
-    b.textContent = t.name;
+    b.textContent = target.name;
     b.disabled = true;
-    b.addEventListener("click", () => transfer(t));
+    b.addEventListener("click", () => transfer(target));
     box.appendChild(b);
   }
   buttons = [...["btn-json", "btn-md", "btn-copy"].map($), ...box.querySelectorAll("button")];
@@ -133,20 +138,20 @@ if (chrome.storage && chrome.storage.local) {
   const host = tab && tab.url ? new URL(tab.url).hostname : "";
   const supported = /^(chatgpt\.com|chat\.openai\.com|claude\.ai|gemini\.google\.com|(www\.)?google\.[a-z.]+)$/.test(host);
   if (!supported) {
-    setStatus("Откройте чат в ChatGPT, Claude, Gemini или Google AI Mode.", "error");
+    setStatus(t("statusOpenChat"), "error");
     return;
   }
   try {
     const r = await ensureInjected();
     if (!r.site) {
-      setStatus("Это обычный поиск Google. Откройте вкладку «Режим ИИ».", "error");
+      setStatus(t("statusGoogleNotAi"), "error");
       return;
     }
     $("site").textContent = r.site || host;
     renderTargets(r.site);
-    setStatus("Откройте нужный чат и нажмите кнопку.");
+    setStatus(t("statusReady"));
     setBusy(false);
   } catch (e) {
-    setStatus("Не удалось подключиться к странице. Обновите вкладку (F5).", "error");
+    setStatus(t("statusCantConnect"), "error");
   }
 })();

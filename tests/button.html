@@ -13,7 +13,20 @@
 </form>
 <script>
   // Заглушки chrome.* для запуска вне расширения
+  // Переводы берём из настоящих _locales; язык — ?lang=ru (по умолчанию en)
+  const LANG = new URLSearchParams(location.search).get("lang") || "en";
+  const loadMessages = (l) => {
+    const x = new XMLHttpRequest();
+    x.open("GET", `../_locales/${l}/messages.json`, false);
+    x.send();
+    return x.status === 200 ? JSON.parse(x.responseText) : {};
+  };
+  const MESSAGES = { ...loadMessages("en"), ...loadMessages(LANG) };
   window.chrome = {
+    i18n: {
+      getMessage: (k) => (k === "@@ui_locale" ? LANG : (MESSAGES[k] && MESSAGES[k].message) || ""),
+      getUILanguage: () => LANG,
+    },
     runtime: {
       onMessage: { addListener() {} },
       // Заглушка background: запоминаем, что попросили открыть

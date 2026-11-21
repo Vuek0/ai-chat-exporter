@@ -1,49 +1,55 @@
 # AI Chat Exporter
 
-Расширение для Chrome, которое выгружает **полную** историю чата (все сообщения пользователя и ИИ, а не summary) из:
+A Chrome extension that exports the **full** chat history (every user and AI message, not a summary) from popular AI chat services, and lets you continue a conversation in another AI.
 
-| Сервис  | Сайт                                 | Как достаёт данные                                       |
-|---------|--------------------------------------|----------------------------------------------------------|
-| ChatGPT | chatgpt.com, chat.openai.com         | Внутренний API чата → при ошибке разбор страницы          |
-| Claude  | claude.ai                            | Внутренний API чата → при ошибке разбор страницы          |
-| Gemini  | gemini.google.com                    | Разбор страницы с автопрокруткой вверх до начала чата     |
-| Google AI Mode | google.com/search («Режим ИИ») | Разбор страницы (только видимый текст ответа, без карусели картинок и кнопок) |
+| Service | Site | How messages are collected |
+|---------|------|----------------------------|
+| ChatGPT | chatgpt.com, chat.openai.com | Internal chat API, falls back to reading the page |
+| Claude | claude.ai | Internal chat API, falls back to reading the page |
+| Gemini | gemini.google.com | Reads the page, auto-scrolling up to load the whole chat |
+| Google AI Mode | google.com/search (AI Mode) | Reads the page (answer text only, without image carousels or buttons) |
 
-Форматы: **JSON** (основной), **Markdown**, копирование JSON в буфер обмена.
+Export formats: **JSON** (main), **Markdown**, or copy JSON to the clipboard.
 
-## Установка
+The interface is available in **English** and **Russian** and follows your Chrome language (English is the default for all other languages). The transfer prompt and Markdown labels use the same language.
 
-1. Откройте `chrome://extensions`.
-2. Включите **Режим разработчика** (справа сверху).
-3. Нажмите **Загрузить распакованное расширение** и выберите эту папку (`ai-chat-exporter`).
-4. Закрепите иконку расширения на панели.
+## Installation
 
-## Использование
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode** (top right).
+3. Click **Load unpacked** and select this folder (`ai-chat-exporter`).
+4. Pin the extension icon to the toolbar.
 
-1. Откройте нужный чат в ChatGPT / Claude / Gemini / Google AI Mode.
-2. Нажмите синюю кнопку **Экспорт** рядом с полем ввода сообщения → **Скачать JSON**.
-   То же самое есть в окне расширения (иконка на панели Chrome).
-3. Файл сохранится в папку загрузок как `chatgpt_<название чата>_2026-11-22.json`.
+After updating the code, click the reload button ⟳ on the extension card and refresh open chat tabs.
 
-Кнопку на странице можно перетащить в любое место, позиция запоминается для каждого сайта.
-Двойной клик по кнопке возвращает её к полю ввода.
-При первом появлении кнопка один раз подсвечивается и показывает короткую подсказку.
+## Usage
 
-## Перенос чата в другую нейронку
+1. Open a chat in ChatGPT, Claude, Gemini or Google AI Mode.
+2. Click the **Export** button next to the message input, then **Download JSON**.
+   The same actions are available in the extension popup (toolbar icon).
+3. The file is saved to your Downloads folder as `chatgpt_<chat title>_2026-11-22.json`.
 
-В меню кнопки **Экспорт** (и в окне расширения) есть раздел **«Продолжить в…»** — ChatGPT, Claude или Gemini.
+About the in-page button:
 
-1. Расширение собирает весь текущий чат в один текст: короткая вводная («продолжи этот разговор, сначала перескажи, на чём мы остановились») и все сообщения по ролям.
-2. Открывает новую вкладку выбранного сервиса и вставляет этот текст в поле ввода.
-3. Сообщение **не отправляется само** — можно дописать свой вопрос и нажать «Отправить».
+- It sits next to the chat input by default and follows it when the layout changes.
+- You can drag it anywhere; the position is remembered per site. Double-click to snap it back to the input.
+- The first time it appears, it pulses once and shows a short hint.
+- You can hide it with the **Export button on chat pages** checkbox in the popup.
 
-Если вставить автоматически не получилось, текст уже лежит в буфере обмена — просто нажмите Ctrl+V.
-Очень длинные чаты ChatGPT и Claude могут прикрепить файлом вместо текста в поле — это нормально.
-Отключить её можно галочкой «Кнопка экспорта на странице чата» в окне расширения.
+If a chat tab was open before the extension was installed, the popup injects the scripts automatically; if that fails, refresh the page (F5).
 
-Если вкладка была открыта до установки расширения — расширение подключится само; если нет, обновите страницу (F5).
+## Continue a chat in another AI
 
-## Формат JSON
+The **Export** menu (and the popup) has a **Continue in…** section with ChatGPT, Claude and Gemini (the current service is hidden).
+
+1. The extension turns the whole chat into one prompt: a short intro ("continue this conversation, first summarize where we left off") followed by every message labeled by role.
+2. It opens a new tab with the chosen service and pastes the prompt into the input field.
+3. The message is **not sent automatically**, so you can add your own question and press Send.
+
+The prompt is also copied to the clipboard, so if automatic pasting fails, just press Ctrl+V.
+Very long chats may be attached as a file by ChatGPT or Claude instead of appearing as text in the input. That's expected and the context is still passed.
+
+## JSON format
 
 ```json
 {
@@ -51,7 +57,7 @@
   "version": 1,
   "source": "chatgpt",
   "source_name": "ChatGPT",
-  "title": "Функция на Python",
+  "title": "Python function",
   "url": "https://chatgpt.com/c/...",
   "conversation_id": "...",
   "model": "gpt-5",
@@ -61,41 +67,51 @@
   "warnings": [],
   "message_count": 2,
   "messages": [
-    { "index": 0, "role": "user", "content": "Напиши функцию сложения", "timestamp": "..." },
+    { "index": 0, "role": "user", "content": "Write an add function", "timestamp": "..." },
     { "index": 1, "role": "assistant", "content": "```python\ndef add(a, b):\n    return a + b\n```", "timestamp": "..." }
   ]
 }
 ```
 
-- `role` — всегда `user` или `assistant`.
-- `content` — текст в Markdown (код, списки, таблицы, формулы сохраняются).
-- `timestamp`, `model`, `attachments` — есть, когда сервис их отдаёт (обычно в режиме `api`).
-- `extraction_method` — `api` или `dom`; `warnings` объясняет, почему пришлось читать страницу.
+- `role` is always `user` or `assistant`.
+- `content` is Markdown (code blocks, lists, tables and formulas are preserved).
+- `timestamp`, `model` and `attachments` are included when the service provides them (usually with `api` extraction).
+- `extraction_method` is `api` or `dom`; `warnings` explains why the page had to be read instead of the API.
 
-## Что важно знать
+## Notes
 
-- Экспортируется **текущая видимая ветка** чата (если вы редактировали сообщения или перегенерировали ответы — берётся выбранная версия).
-- Скрытые рассуждения модели («thinking») и служебные вызовы инструментов не включаются — только то, что видно в чате.
-- Картинки помечаются как `[image]`, у файлов сохраняются имена.
-- В Google AI Mode значки источников («Википедия +1»), карусели картинок и панель источников справа не экспортируются, только текст ответа. Расширение срабатывает только во вкладке «Режим ИИ», а не в обычной выдаче.
-- Сервисы периодически меняют вёрстку и внутренние API. Если что-то сломалось — поправить нужно один файл в `src/extractors/`.
+- Only the **currently visible branch** of the chat is exported (if you edited messages or regenerated answers, the selected version is used).
+- Hidden model reasoning ("thinking") and internal tool calls are not included, only what is shown in the chat.
+- Images are marked as `[image]`; file attachments keep their names.
+- In Google AI Mode, source chips, image carousels and the sources panel are skipped; only the answer text is exported. The extension works on the AI Mode tab and on AI answers in search results, not on regular results.
+- These services change their markup and internal APIs from time to time. If something breaks, the fix usually lives in a single file in `src/extractors/`.
+- Everything runs locally in your browser. The extension sends your chats nowhere.
 
-## Структура
+## Project structure
 
 ```
-manifest.json            — Manifest V3
-src/common.js            — реестр экстракторов, HTML → Markdown
-src/extractors/*.js      — по файлу на сервис
-src/format.js            — форматы JSON / Markdown и имена файлов
-src/content.js           — сборка итогового JSON, связь с popup
-src/ui.js                — плавающая кнопка экспорта на странице
-src/transfer.js          — перенос чата: сборка текста и вставка в поле ввода
-src/background.js        — открывает вкладку целевого сервиса и передаёт ей текст
-popup/                   — окно расширения и скачивание файлов
-tests/                   — макеты страниц для проверки конвертера и кнопки
-tests/test.html          — макет страницы для проверки конвертера
+manifest.json            Manifest V3
+icons/                   Extension icons (16, 32, 48, 128 px)
+src/common.js            Extractor registry, HTML → Markdown converter
+src/extractors/*.js      One extractor per service
+src/format.js            JSON / Markdown / transfer prompt formats, file names
+src/content.js           Builds the final export object, talks to the popup
+src/ui.js                Floating in-page export button
+src/transfer.js          Chat transfer: builds the prompt and pastes it into the input
+src/background.js        Opens the target service tab and hands it the prompt
+popup/                   Extension popup and file downloads
+_locales/                UI translations (en, ru)
+tests/                   Mock pages for testing the converter and the button
 ```
 
-### Добавить новый сервис
+### Adding a translation
 
-Создайте `src/extractors/<name>.js` с `__ACE__.register({ id, name, match(host), async extract() })`, где `extract` возвращает `{ title, messages: [{ role, content }] }`, и добавьте файл и домен в `manifest.json` и `popup/popup.js`.
+Copy `_locales/en/messages.json` to `_locales/<lang>/messages.json` and translate the `message` values. `{0}`, `{1}` are placeholders. For languages with several plural forms, add `count_one`, `count_few`, `count_many`, `count_other` as needed.
+
+### Adding a new service
+
+Create `src/extractors/<name>.js` that calls `__ACE__.register({ id, name, match(host), async extract() })`, where `extract` returns `{ title, messages: [{ role, content }] }`. Then add the file and domain to `manifest.json` and the domain check in `popup/popup.js`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

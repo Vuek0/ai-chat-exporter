@@ -24,17 +24,17 @@
 
   async function viaApi() {
     const id = conversationId();
-    if (!id) throw new Error("Не найден id чата в адресе страницы");
+    if (!id) throw new Error(ACE.t("errNoChatId"));
 
     const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
     const token = session && session.accessToken;
-    if (!token) throw new Error("Нет accessToken (не авторизованы?)");
+    if (!token) throw new Error(ACE.t("errNoToken"));
 
     const res = await fetch(`/backend-api/conversation/${id}`, {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(`API вернул HTTP ${res.status}`);
+    if (!res.ok) throw new Error(ACE.t("errApiHttp", res.status));
     const data = await res.json();
 
     // Идём от текущей ветки к корню — получаем именно ту ветку, что видна на экране.
@@ -113,11 +113,11 @@
       try {
         const r = await viaApi();
         if (r.messages.length) return r;
-        throw new Error("API вернул пустой чат");
+        throw new Error(ACE.t("errApiEmpty"));
       } catch (e) {
-        console.warn("[AI Chat Exporter] ChatGPT API недоступен, читаю страницу:", e);
+        console.warn("[AI Chat Exporter] ChatGPT API unavailable, reading the page:", e);
         const r = viaDom();
-        r.warnings = [`API: ${e.message}. Использован разбор страницы.`];
+        r.warnings = [ACE.t("warnApiFallback", e.message)];
         return r;
       }
     },

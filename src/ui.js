@@ -3,6 +3,7 @@
 (() => {
   const ACE = globalThis.__ACE__;
   if (ACE.uiLoaded) return;
+  const t = ACE.t;
   ACE.uiLoaded = true;
 
   const POS_KEY = "ace-button-pos-v2";
@@ -204,22 +205,22 @@
       <div class="wrap up right">
         <div class="pop toast" role="status"></div>
         <div class="pop menu" role="menu">
-          <div class="title">Экспорт чата</div>
-          <button data-act="json" role="menuitem">Скачать JSON</button>
-          <button data-act="md" role="menuitem">Скачать Markdown</button>
-          <button data-act="copy" role="menuitem">Скопировать JSON</button>
-          <div class="title sep">Продолжить в…</div>
+          <div class="title">${t("menuTitle")}</div>
+          <button data-act="json" role="menuitem">${t("btnJson")}</button>
+          <button data-act="md" role="menuitem">${t("btnMd")}</button>
+          <button data-act="copy" role="menuitem">${t("btnCopyJson")}</button>
+          <div class="title sep">${t("continueIn")}</div>
           <div class="targets"></div>
-          <div class="hint">Кнопку можно перетащить · двойной клик — вернуть к полю ввода</div>
+          <div class="hint">${t("menuHint")}</div>
         </div>
         <div class="pop intro" role="dialog" aria-label="AI Chat Exporter">
-          <b>Экспорт этого чата</b>
-          <p>Скачайте всю переписку в JSON или Markdown одним нажатием.</p>
-          <button class="intro-ok">Понятно</button>
+          <b>${t("introTitle")}</b>
+          <p>${t("introText")}</p>
+          <button class="intro-ok">${t("introOk")}</button>
         </div>
         <span class="ring" aria-hidden="true"></span>
-        <button class="fab" title="Экспорт чата (AI Chat Exporter)" aria-haspopup="menu" aria-expanded="false">
-          <span class="icon">${ICON_DOWNLOAD}</span><span class="label">Экспорт</span>
+        <button class="fab" title="${t("fabTitle")}" aria-haspopup="menu" aria-expanded="false">
+          <span class="icon">${ICON_DOWNLOAD}</span><span class="label">${t("fabLabel")}</span>
         </button>
       </div>`;
 
@@ -364,7 +365,7 @@
     function setBusy(busy) {
       fab.classList.toggle("busy", busy);
       icon.innerHTML = busy ? ICON_SPIN : ICON_DOWNLOAD;
-      label.textContent = busy ? "Собираю…" : "Экспорт";
+      label.textContent = busy ? t("fabBusy") : t("fabLabel");
       menu.querySelectorAll("button").forEach((b) => (b.disabled = busy));
       applyPos();
     }
@@ -378,10 +379,10 @@
         setBusy(true);
         try {
           const r = await ACE.transferTo(tbtn.dataset.target);
-          const long = r.length > 60000 ? "\nЧат длинный — сервис может прикрепить его файлом." : "";
-          showToast(`Открыл ${r.target.name}: ${ACE.messagesWord(r.chat.message_count)} будут вставлены в поле ввода.${long}`, "ok", 6000);
+          const long = r.length > 60000 ? "\n" + t("transferLong") : "";
+          showToast(t("transferOpened", r.target.name, ACE.messagesWord(r.chat.message_count)) + long, "ok", 6000);
         } catch (err) {
-          showToast("Ошибка: " + (err.message || err), "error", 6000);
+          showToast(t("errPrefix", err.message || err), "error", 6000);
         } finally {
           setBusy(false);
         }
@@ -399,9 +400,9 @@
         if (act === "md") saveFile(ACE.toMarkdown(chat), base + ".md", "text/markdown");
         if (act === "copy") await copyText(ACE.toJson(chat));
         const warn = chat.warnings && chat.warnings.length ? `\n⚠ ${chat.warnings.join(" ")}` : "";
-        showToast(`${act === "copy" ? "Скопировано" : "Готово"}: ${ACE.messagesWord(chat.message_count)}.${warn}`, warn ? "" : "ok");
+        showToast(t("resultLine", t(act === "copy" ? "copied" : "done"), ACE.messagesWord(chat.message_count)) + warn, warn ? "" : "ok");
       } catch (err) {
-        showToast("Ошибка: " + (err.message || err), "error", 6000);
+        showToast(t("errPrefix", err.message || err), "error", 6000);
       } finally {
         setBusy(false);
       }
@@ -436,7 +437,7 @@
       ta.select();
       const ok = document.execCommand("copy");
       ta.remove();
-      if (!ok) throw new Error("Браузер не дал скопировать. Используйте «Скачать JSON».");
+      if (!ok) throw new Error(t("errCopy"));
     }
   }
 

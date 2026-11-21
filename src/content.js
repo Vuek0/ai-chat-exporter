@@ -10,10 +10,10 @@
 
   async function run() {
     const ex = findExtractor();
-    if (!ex) throw new Error("Этот сайт не поддерживается");
+    if (!ex) throw new Error(ACE.t("errUnsupported"));
     const r = await ex.extract();
     if (!r.messages || !r.messages.length) {
-      throw new Error("Сообщения не найдены. Откройте конкретный чат и попробуйте снова.");
+      throw new Error(ACE.t("errNoMessages"));
     }
     const firstUser = r.messages.find((m) => m.role === "user");
     const fallbackTitle = firstUser ? firstUser.content.slice(0, 60).replace(/\s+/g, " ") : "chat";
