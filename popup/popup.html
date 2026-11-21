@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <title>AI Chat Exporter</title>
+  <link rel="icon" href="../icons/icon-32.png">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
-    <h1>AI Chat Exporter</h1>
+    <h1><img src="../icons/icon-32.png" alt="" width="20" height="20">AI Chat Exporter</h1>
     <span id="site" class="site">—</span>
   </header>
 
@@ -19,7 +20,13 @@
     <button id="btn-copy" class="ghost" disabled>Скопировать JSON</button>
   </div>
 
+  <label class="option">
+    <input type="checkbox" id="opt-button" checked>
+    Кнопка экспорта на странице чата
+  </label>
+
   <footer>ChatGPT · Claude · Gemini · Google AI Mode</footer>
+  <script src="../src/format.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
     {
       "name": "test-server",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{const fp=p.join(process.cwd(),decodeURIComponent(q.url.split('?')[0]));f.readFile(fp,(e,d)=>{if(e){s.writeHead(404);return s.end();}s.writeHead(200,{'Access-Control-Allow-Origin':'*','Content-Type':fp.endsWith('.html')?'text/html; charset=utf-8':'text/javascript; charset=utf-8'});s.end(d);});}).listen(8765)"],
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{const fp=p.join(process.cwd(),decodeURIComponent(q.url.split('?')[0]));f.readFile(fp,(e,d)=>{if(e){s.writeHead(404);return s.end();}s.writeHead(200,{'Access-Control-Allow-Origin':'*','Content-Type':({'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.json':'application/json'})[p.extname(fp)]||'text/javascript; charset=utf-8'});s.end(d);});}).listen(8765)"],
       "port": 8765
     }
   ]

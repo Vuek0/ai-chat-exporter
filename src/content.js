@@ -5,6 +5,8 @@
   ACE.listening = true;
 
   const findExtractor = () => ACE.extractors.find((e) => e.match(location.hostname));
+  ACE.findExtractor = findExtractor;
+  ACE.run = () => run();
 
   async function run() {
     const ex = findExtractor();

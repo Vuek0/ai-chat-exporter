@@ -1,12 +1,15 @@
 const CONTENT_FILES = [
   "src/common.js",
+  "src/format.js",
   "src/extractors/chatgpt.js",
   "src/extractors/claude.js",
   "src/extractors/gemini.js",
   "src/extractors/google-ai.js",
   "src/content.js",
+  "src/ui.js",
 ];
 
+const ACE = globalThis.__ACE__; // из src/format.js
 const $ = (id) => document.getElementById(id);
 const buttons = ["btn-json", "btn-md", "btn-copy"].map($);
 let tabId = null;
@@ -42,33 +45,6 @@ async function getChat() {
   return cached;
 }
 
-function safeName(s) {
-  return (s || "chat").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "chat";
-}
-function fileBase(chat) {
-  const d = new Date(chat.exported_at);
-  const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return `${chat.source}_${safeName(chat.title)}_${stamp}`;
-}
-
-function toMarkdown(chat) {
-  const head = [
-    `# ${chat.title}`,
-    "",
-    `- Источник: ${chat.source_name}`,
-    `- URL: ${chat.url}`,
-    chat.model ? `- Модель: ${chat.model}` : null,
-    `- Экспортировано: ${chat.exported_at}`,
-    `- Сообщений: ${chat.message_count}`,
-  ].filter((l) => l !== null);
-  const body = chat.messages.map((m) => {
-    const who = m.role === "user" ? "User" : `Assistant (${chat.source_name})`;
-    const att = m.attachments ? `\n\n_Вложения: ${m.attachments.join(", ")}_` : "";
-    return `## ${who}\n\n${m.content}${att}`;
-  });
-  return [head.join("\n"), ...body].join("\n\n---\n\n") + "\n";
-}
-
 async function download(text, filename, mime) {
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
   try {
@@ -82,13 +58,13 @@ async function handle(action) {
   setBusy(true);
   try {
     const chat = await getChat();
-    const json = JSON.stringify(chat, null, 2);
-    if (action === "json") await download(json, fileBase(chat) + ".json", "application/json");
-    if (action === "md") await download(toMarkdown(chat), fileBase(chat) + ".md", "text/markdown");
-    if (action === "copy") await navigator.clipboard.writeText(json);
+    const base = ACE.fileBase(chat);
+    if (action === "json") await download(ACE.toJson(chat), base + ".json", "application/json");
+    if (action === "md") await download(ACE.toMarkdown(chat), base + ".md", "text/markdown");
+    if (action === "copy") await navigator.clipboard.writeText(ACE.toJson(chat));
     const warn = chat.warnings && chat.warnings.length ? `\n⚠ ${chat.warnings.join(" ")}` : "";
     const done = action === "copy" ? "Скопировано" : "Готово";
-    setStatus(`${done}: ${chat.message_count} сообщений.${warn}`, warn ? "" : "ok");
+    setStatus(`${done}: ${ACE.messagesWord(chat.message_count)}.${warn}`, warn ? "" : "ok");
   } catch (e) {
     setStatus("Ошибка: " + (e.message || e), "error");
   } finally {
@@ -99,6 +75,20 @@ async function handle(action) {
 $("btn-json").addEventListener("click", () => handle("json"));
 $("btn-md").addEventListener("click", () => handle("md"));
 $("btn-copy").addEventListener("click", () => handle("copy"));
+
+// Переключатель кнопки на странице.
+// chrome.storage недоступен, если расширение не перезагружено после добавления разрешения "storage" —
+// тогда просто прячем переключатель, а не роняем весь popup.
+if (chrome.storage && chrome.storage.local) {
+  chrome.storage.local.get({ showPageButton: true }).then(({ showPageButton }) => {
+    $("opt-button").checked = showPageButton;
+  });
+  $("opt-button").addEventListener("change", (e) => {
+    chrome.storage.local.set({ showPageButton: e.target.checked });
+  });
+} else {
+  $("opt-button").closest("label").hidden = true;
+}
 
 (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
