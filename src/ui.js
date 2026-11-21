@@ -398,8 +398,9 @@
       fab.classList.toggle("busy", running);
       icon.innerHTML = running ? ICON_SPIN : ICON_DOWNLOAD;
       label.textContent = running ? (st.total ? `${st.done}/${st.total}` : t("fabBusy")) : t("fabLabel");
-      bulkBtn.textContent = running ? t("bulkCancel") : t("bulkExport");
-      menu.querySelectorAll("button").forEach((b) => (b.disabled = running && b !== bulkBtn));
+      bulkBtn.textContent = running ? (st.cancelled ? t("bulkStopping") : t("bulkCancel")) : t("bulkExport");
+      bulkBtn.disabled = running && st.cancelled;
+      menu.querySelectorAll("button").forEach((b) => b !== bulkBtn && (b.disabled = running));
       applyPos();
     }
     if (ACE.onBulkState) ACE.onBulkState((st) => host && host.isConnected && applyBulkState(st));

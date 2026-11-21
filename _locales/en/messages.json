@@ -96,5 +96,6 @@
   "progressPreparing": { "message": "Preparing the {0} file…" },
   "downloadedFile": { "message": "Downloaded: {0}\n{1}" },
 
-  "langAutoShort": { "message": "Auto" }
+  "langAutoShort": { "message": "Auto" },
+  "bulkStopping": { "message": "Stopping…" }
 }

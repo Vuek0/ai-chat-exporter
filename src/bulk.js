@@ -13,15 +13,36 @@
   ACE.bulkRunning = null;
   const stateListeners = [];
   ACE.onBulkState = (fn) => stateListeners.push(fn);
-  const emitState = () => stateListeners.forEach((fn) => fn(ACE.bulkRunning));
+
+  // Снимок состояния для popup: { done, total, cancelled } или null, если экспорт не идёт
+  ACE.bulkSnapshot = () =>
+    ACE.bulkRunning
+      ? { done: ACE.bulkRunning.done, total: ACE.bulkRunning.total, cancelled: ACE.bulkRunning.cancelled }
+      : null;
+
+  // Состояние и сообщения дублируем в popup (если он открыт) — там тоже видно прогресс и есть «Стоп»
+  const toPopup = (msg) => {
+    try {
+      chrome.runtime.sendMessage(msg).catch(() => {});
+    } catch (_) {}
+  };
+
+  const emitState = () => {
+    stateListeners.forEach((fn) => fn(ACE.bulkRunning));
+    toPopup({ type: "ACE_BULK_STATE", state: ACE.bulkSnapshot() });
+  };
 
   ACE.bulkCancel = () => {
-    if (ACE.bulkRunning) ACE.bulkRunning.cancelled = true;
+    if (ACE.bulkRunning) {
+      ACE.bulkRunning.cancelled = true;
+      emitState();
+    }
   };
 
   const notify = (text, kind = "", ms = 0) => {
     if (ACE.notify) ACE.notify(text, kind, ms);
     else console.info("[AI Chat Exporter]", text);
+    toPopup({ type: "ACE_BULK_NOTE", text, kind });
   };
 
   async function withRetry(fn, state) {

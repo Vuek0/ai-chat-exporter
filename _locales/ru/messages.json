@@ -98,5 +98,6 @@
   "progressPreparing": { "message": "Готовлю файл {0}…" },
   "downloadedFile": { "message": "Скачан: {0}\n{1}" },
 
-  "langAutoShort": { "message": "Авто" }
+  "langAutoShort": { "message": "Авто" },
+  "bulkStopping": { "message": "Останавливаю…" }
 }

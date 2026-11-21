@@ -51,7 +51,17 @@
     if (!msg || typeof msg.type !== "string") return;
     if (msg.type === "ACE_PING") {
       const ex = findExtractor();
-      sendResponse({ ok: true, site: ex ? ex.name : null, bulk: !!(ex && ex.bulk), bulkRunning: !!ACE.bulkRunning });
+      sendResponse({
+        ok: true,
+        site: ex ? ex.name : null,
+        bulk: !!(ex && ex.bulk),
+        bulkState: ACE.bulkSnapshot ? ACE.bulkSnapshot() : null,
+      });
+      return;
+    }
+    if (msg.type === "ACE_BULK_CANCEL") {
+      if (ACE.bulkCancel) ACE.bulkCancel();
+      sendResponse({ ok: true });
       return;
     }
     // Массовый экспорт запускается на странице: popup может закрыться, а прогресс виден в уведомлении

@@ -90,11 +90,34 @@ function setBusy(busy, active) {
   }
 }
 
-// Прогресс со страницы: Gemini сообщает, сколько сообщений уже подгружено
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && msg.type === "ACE_PROGRESS" && busyNow && msg.n) {
+// ---------- Массовый экспорт: состояние приходит со страницы ----------
+let bulkState = null; // { done, total, cancelled } или null
+
+const bulkProgressText = (st) =>
+  st.cancelled ? t("bulkStopping") : st.total ? t("bulkProgress", Math.min(st.done + 1, st.total), st.total) : t("bulkListing");
+
+// Пока идёт экспорт: остальные кнопки неактивны, а «Экспорт всех чатов» превращается в «Остановить»
+function renderBulk(st) {
+  bulkState = st;
+  const btn = $("btn-bulk");
+  const running = !!st;
+  for (const b of buttons) b.disabled = running;
+  btn.disabled = running && st.cancelled;
+  btn.classList.toggle("working", running);
+  btn.textContent = !running ? t("bulkExport") : st.cancelled ? t("bulkStopping") : t("bulkCancel");
+}
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (!msg) return;
+  // Сообщения только от вкладки, для которой открыт popup
+  if (sender && sender.tab && tabId != null && sender.tab.id !== tabId) return;
+  // Gemini: сколько сообщений уже подгружено
+  if (msg.type === "ACE_PROGRESS" && busyNow && msg.n) {
     setStatus(t("progressLoadingHistory", msg.n), "loading");
   }
+  if (msg.type === "ACE_BULK_STATE") renderBulk(msg.state);
+  // Промежуточные шаги приходят с kind "loading", итог — с "ok"/"error"/"" (без полоски)
+  if (msg.type === "ACE_BULK_NOTE") setStatus(msg.text, msg.kind || "");
 });
 
 async function send(msg) {
@@ -196,14 +219,22 @@ $("btn-json").addEventListener("click", (e) => handle("json", e.currentTarget));
 $("btn-md").addEventListener("click", (e) => handle("md", e.currentTarget));
 $("btn-html").addEventListener("click", (e) => handle("html", e.currentTarget));
 
-// Массовый экспорт идёт на странице сервиса; popup только запускает его
+// Массовый экспорт идёт на странице сервиса; popup запускает, показывает прогресс и умеет остановить.
+// Окно можно закрыть — экспорт продолжится, а при следующем открытии прогресс снова будет виден.
 $("btn-bulk").addEventListener("click", async () => {
   try {
+    if (bulkState) {
+      renderBulk({ ...bulkState, cancelled: true });
+      setStatus(t("bulkStopping"), "loading");
+      await send({ type: "ACE_BULK_CANCEL" });
+      return;
+    }
+    renderBulk({ done: 0, total: 0, cancelled: false });
+    setStatus(t("bulkListing"), "loading");
     const r = await send({ type: "ACE_BULK_START" });
     if (!r || !r.ok) throw new Error((r && r.error) || t("errNoResponse"));
-    setStatus(t("bulkStarted"), "ok");
-    $("btn-bulk").disabled = true;
   } catch (e) {
+    renderBulk(null);
     setStatus(t("errPrefix", e.message || e), "error");
   }
 });
@@ -244,12 +275,13 @@ if (chrome.storage && chrome.storage.local) {
     currentSite = r.site;
     renderTargets(r.site);
     $("bulk").hidden = !r.bulk;
-    if (r.bulkRunning) {
-      setStatus(t("bulkAlreadyRunning"));
-      $("btn-bulk").disabled = true;
-    }
     setStatus(t("statusReady"));
     setBusy(false);
+    // Экспорт уже идёт (запущен раньше) — показываем прогресс и кнопку «Остановить»
+    if (r.bulkState) {
+      renderBulk(r.bulkState);
+      setStatus(bulkProgressText(r.bulkState), "loading");
+    }
   } catch (e) {
     setStatus(t("statusCantConnect"), "error");
   }
