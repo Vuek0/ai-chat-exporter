@@ -6,27 +6,96 @@ const CONTENT_FILES = [
   "src/extractors/gemini.js",
   "src/extractors/google-ai.js",
   "src/content.js",
+  "src/zip.js",
+  "src/bulk.js",
   "src/ui.js",
   "src/transfer.js",
 ];
 
 const ACE = globalThis.__ACE__; // из src/format.js
 const t = ACE.t;
-
-// Тексты разметки: <… data-i18n="key">
-document.documentElement.lang = chrome.i18n.getUILanguage();
-for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
 const $ = (id) => document.getElementById(id);
-let buttons = ["btn-json", "btn-md", "btn-copy"].map($);
+
+// Тексты разметки: <… data-i18n="key">; ждём выбранный вручную язык, если он есть
+function applyTexts() {
+  document.documentElement.lang = ACE.uiLang();
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+}
+applyTexts();
+$("version").textContent = "v" + chrome.runtime.getManifest().version;
+
+// Выбор языка: «Авто» — как в Chrome, иначе строки выбранного языка кладём в storage,
+// откуда их берут и popup, и кнопка на страницах.
+const langButtons = [...$("opt-lang").querySelectorAll("button[data-value]")];
+
+function showLang(value) {
+  const i = Math.max(0, langButtons.findIndex((b) => b.dataset.value === value));
+  $("opt-lang").style.setProperty("--i", i);
+  langButtons.forEach((b, j) => {
+    b.setAttribute("aria-checked", String(j === i));
+    b.tabIndex = j === i ? 0 : -1; // в группе радио-кнопок Tab попадает только на выбранную
+  });
+}
+
+async function chooseLang(value) {
+  showLang(value);
+  if (value === "auto") {
+    await chrome.storage.local.set({ uiLang: "auto", uiMessages: null });
+  } else {
+    const messages = await fetch(chrome.runtime.getURL(`_locales/${value}/messages.json`)).then((r) => r.json());
+    await chrome.storage.local.set({ uiLang: value, uiMessages: messages });
+  }
+  setTimeout(() => location.reload(), 260); // даём «таблетке» доехать, потом перерисовываем на новом языке
+}
+
+if (chrome.storage && chrome.storage.local) {
+  chrome.storage.local.get({ uiLang: "auto" }).then((v) => showLang(v.uiLang));
+  $("lang-row").title = t("langAuto");
+  langButtons.forEach((b, j) => {
+    b.addEventListener("click", () => {
+      if (b.getAttribute("aria-checked") !== "true") chooseLang(b.dataset.value);
+    });
+    // Стрелки влево/вправо — как в обычной группе радио-кнопок
+    b.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      const next = langButtons[(j + d + langButtons.length) % langButtons.length];
+      next.focus();
+      chooseLang(next.dataset.value);
+    });
+  });
+} else {
+  $("lang-row").hidden = true;
+}
+
+const ACTION_IDS = ["btn-json", "btn-md", "btn-html", "btn-copy"];
+let buttons = ACTION_IDS.map($);
 let tabId = null;
 let cached = null;
+let currentSite = null;
+let busyNow = false;
 
 function setStatus(text, kind = "") {
   const s = $("status");
   s.textContent = text;
   s.className = "status " + kind;
 }
-const setBusy = (busy) => buttons.forEach((b) => (b.disabled = busy));
+// Во время работы все кнопки неактивны, а нажатая показывает крутилку
+function setBusy(busy, active) {
+  busyNow = busy;
+  for (const b of [...buttons, $("btn-bulk")]) {
+    b.disabled = busy;
+    b.classList.toggle("working", busy && b === active);
+  }
+}
+
+// Прогресс со страницы: Gemini сообщает, сколько сообщений уже подгружено
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg && msg.type === "ACE_PROGRESS" && busyNow && msg.n) {
+    setStatus(t("progressLoadingHistory", msg.n), "loading");
+  }
+});
 
 async function send(msg) {
   return chrome.tabs.sendMessage(tabId, msg);
@@ -44,7 +113,7 @@ async function ensureInjected() {
 
 async function getChat() {
   if (cached) return cached;
-  setStatus(t("statusCollecting"));
+  setStatus(t(currentSite === "Gemini" ? "statusCollecting" : "progressCollecting"), "loading");
   const r = await send({ type: "ACE_EXTRACT" });
   if (!r || !r.ok) throw new Error((r && r.error) || t("errNoResponse"));
   cached = r.data;
@@ -60,17 +129,26 @@ async function download(text, filename, mime) {
   }
 }
 
-async function handle(action) {
-  setBusy(true);
+async function handle(action, btn) {
+  setBusy(true, btn);
   try {
     const chat = await getChat();
     const base = ACE.fileBase(chat);
-    if (action === "json") await download(ACE.toJson(chat), base + ".json", "application/json");
-    if (action === "md") await download(ACE.toMarkdown(chat), base + ".md", "text/markdown");
-    if (action === "copy") await navigator.clipboard.writeText(ACE.toJson(chat));
     const warn = chat.warnings && chat.warnings.length ? `\n⚠ ${chat.warnings.join(" ")}` : "";
-    const done = t(action === "copy" ? "copied" : "done");
-    setStatus(t("resultLine", done, ACE.messagesWord(chat.message_count)) + warn, warn ? "" : "ok");
+    const count = ACE.messagesWord(chat.message_count);
+    if (action === "copy") {
+      await navigator.clipboard.writeText(ACE.toJson(chat));
+      setStatus(t("resultLine", t("copied"), count) + warn, warn ? "" : "ok");
+    } else {
+      const fmt = {
+        json: ["JSON", ".json", "application/json", ACE.toJson],
+        md: ["Markdown", ".md", "text/markdown", ACE.toMarkdown],
+        html: ["HTML", ".html", "text/html", ACE.toHtml],
+      }[action];
+      setStatus(t("progressPreparing", fmt[0]), "loading");
+      await download(fmt[3](chat), base + fmt[1], fmt[2]);
+      setStatus(t("downloadedFile", base + fmt[1], count) + warn, warn ? "" : "ok");
+    }
   } catch (e) {
     setStatus(t("errPrefix", e.message || e), "error");
   } finally {
@@ -79,8 +157,8 @@ async function handle(action) {
 }
 
 // Перенос чата в другую нейронку
-async function transfer(target) {
-  setBusy(true);
+async function transfer(target, btn) {
+  setBusy(true, btn);
   try {
     const chat = await getChat();
     const text = ACE.toTransferPrompt(chat);
@@ -108,15 +186,28 @@ function renderTargets(currentSite) {
     const b = document.createElement("button");
     b.textContent = target.name;
     b.disabled = true;
-    b.addEventListener("click", () => transfer(target));
+    b.addEventListener("click", () => transfer(target, b));
     box.appendChild(b);
   }
-  buttons = [...["btn-json", "btn-md", "btn-copy"].map($), ...box.querySelectorAll("button")];
+  buttons = [...ACTION_IDS.map($), ...box.querySelectorAll("button")];
 }
 
-$("btn-json").addEventListener("click", () => handle("json"));
-$("btn-md").addEventListener("click", () => handle("md"));
-$("btn-copy").addEventListener("click", () => handle("copy"));
+$("btn-json").addEventListener("click", (e) => handle("json", e.currentTarget));
+$("btn-md").addEventListener("click", (e) => handle("md", e.currentTarget));
+$("btn-html").addEventListener("click", (e) => handle("html", e.currentTarget));
+
+// Массовый экспорт идёт на странице сервиса; popup только запускает его
+$("btn-bulk").addEventListener("click", async () => {
+  try {
+    const r = await send({ type: "ACE_BULK_START" });
+    if (!r || !r.ok) throw new Error((r && r.error) || t("errNoResponse"));
+    setStatus(t("bulkStarted"), "ok");
+    $("btn-bulk").disabled = true;
+  } catch (e) {
+    setStatus(t("errPrefix", e.message || e), "error");
+  }
+});
+$("btn-copy").addEventListener("click", (e) => handle("copy", e.currentTarget));
 
 // Переключатель кнопки на странице.
 // chrome.storage недоступен, если расширение не перезагружено после добавления разрешения "storage" —
@@ -133,6 +224,8 @@ if (chrome.storage && chrome.storage.local) {
 }
 
 (async () => {
+  await ACE.i18nReady;
+  applyTexts();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab && tab.id;
   const host = tab && tab.url ? new URL(tab.url).hostname : "";
@@ -148,7 +241,13 @@ if (chrome.storage && chrome.storage.local) {
       return;
     }
     $("site").textContent = r.site || host;
+    currentSite = r.site;
     renderTargets(r.site);
+    $("bulk").hidden = !r.bulk;
+    if (r.bulkRunning) {
+      setStatus(t("bulkAlreadyRunning"));
+      $("btn-bulk").disabled = true;
+    }
     setStatus(t("statusReady"));
     setBusy(false);
   } catch (e) {

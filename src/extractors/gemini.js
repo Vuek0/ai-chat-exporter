@@ -59,7 +59,7 @@
     name: "Gemini",
     match: (host) => host === "gemini.google.com",
     async extract() {
-      await loadFullHistory();
+      await loadFullHistory((n) => ACE.extractProgress && ACE.extractProgress(n));
       const messages = [];
       for (const el of document.querySelectorAll(TURN_SEL)) {
         const isUser = el.tagName === "USER-QUERY";

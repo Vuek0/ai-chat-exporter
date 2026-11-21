@@ -22,20 +22,57 @@
       .join("\n\n");
   }
 
-  async function viaApi() {
-    const id = conversationId();
-    if (!id) throw new Error(ACE.t("errNoChatId"));
-
+  async function getToken() {
     const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
     const token = session && session.accessToken;
     if (!token) throw new Error(ACE.t("errNoToken"));
+    return token;
+  }
 
-    const res = await fetch(`/backend-api/conversation/${id}`, {
-      credentials: "include",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error(ACE.t("errApiHttp", res.status));
-    const data = await res.json();
+  async function api(path, token) {
+    const res = await fetch(path, { credentials: "include", headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw ACE.httpError(res.status);
+    return res.json();
+  }
+
+  async function viaApi() {
+    const id = conversationId();
+    if (!id) throw new Error(ACE.t("errNoChatId"));
+    return fetchConversation(id, await getToken());
+  }
+
+  // Список всех чатов: общий список (страницы по 100) + чаты проектов на всякий случай, без дублей
+  async function listConversations(token) {
+    const byId = new Map();
+    for (let offset = 0; offset < 20000; offset += 100) {
+      const j = await api(`/backend-api/conversations?offset=${offset}&limit=100&order=updated`, token);
+      const items = j.items || [];
+      for (const it of items) byId.set(it.id, { id: it.id, title: it.title, updated_at: it.update_time });
+      if (items.length < 100) break;
+    }
+    try {
+      const side = await api("/backend-api/gizmos/snorlax/sidebar?conversations_per_gizmo=0", token);
+      for (const g of side.items || []) {
+        const gid = g.gizmo && (g.gizmo.gizmo ? g.gizmo.gizmo.id : g.gizmo.id);
+        if (!gid) continue;
+        let cursor = 0;
+        for (let k = 0; k < 50; k++) {
+          const pj = await api(`/backend-api/gizmos/${gid}/conversations?cursor=${cursor}`, token);
+          for (const it of pj.items || []) {
+            if (!byId.has(it.id)) byId.set(it.id, { id: it.id, title: it.title, updated_at: it.update_time });
+          }
+          if (!pj.cursor) break;
+          cursor = pj.cursor;
+        }
+      }
+    } catch (e) {
+      console.warn("[AI Chat Exporter] ChatGPT projects list unavailable:", e);
+    }
+    return [...byId.values()];
+  }
+
+  async function fetchConversation(id, token) {
+    const data = await api(`/backend-api/conversation/${id}`, token);
 
     // Идём от текущей ветки к корню — получаем именно ту ветку, что видна на экране.
     const chain = [];
@@ -73,8 +110,9 @@
       .filter((m) => m.content || (m.attachments && m.attachments.length));
 
     return {
-      title: data.title || document.title,
+      title: data.title || "",
       conversation_id: id,
+      url: `${location.origin}/c/${id}`,
       model: data.default_model_slug || null,
       created_at: data.create_time ? new Date(data.create_time * 1000).toISOString() : null,
       method: "api",
@@ -109,7 +147,15 @@
     id: "chatgpt",
     name: "ChatGPT",
     match: (host) => host === "chatgpt.com" || host.endsWith(".chatgpt.com") || host === "chat.openai.com",
+    // Массовый экспорт: контекст (токен) получаем один раз на весь проход
+    bulk: {
+      prepare: getToken,
+      list: (token) => listConversations(token),
+      fetch: (id, token) => fetchConversation(id, token),
+    },
     async extract() {
+      // Не в чате (главная страница, новый чат) — экспортировать нечего, без лишних предупреждений
+      if (!conversationId()) throw new Error(ACE.t("errNoMessages"));
       try {
         const r = await viaApi();
         if (r.messages.length) return r;

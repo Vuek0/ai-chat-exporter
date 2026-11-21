@@ -108,6 +108,7 @@
     }
     .menu button:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
     .menu button:disabled { opacity: .45; cursor: default; }
+    .menu button.bulk { font-weight: 600; }
     .menu .title.sep { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 9px; }
     .menu .targets button::after { content: "↗"; float: right; color: var(--muted); }
     .menu .hint { padding: 6px 10px 6px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); margin-top: 4px; }
@@ -118,6 +119,20 @@
       white-space: pre-line;
     }
     .toast.show { display: block; }
+    [hidden] { display: none !important; }
+
+    /* Уведомление «идёт работа»: бегущая полоска снизу */
+    .toast.loading { overflow: hidden; padding-bottom: 13px; } /* .pop уже position: absolute */
+    .toast.loading::before {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+      background: color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    .toast.loading::after {
+      content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 40%;
+      border-radius: 4px; background: var(--brand);
+      animation: ace-bar 1.1s ease-in-out infinite;
+    }
+    @keyframes ace-bar { 0% { left: -40%; } 100% { left: 100%; } }
 
     /* Появление кнопки */
     .wrap { animation: ace-in .4s cubic-bezier(.2,.8,.2,1) both; }
@@ -150,6 +165,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .wrap, .intro.show, .ring.on, .fab.busy svg { animation: none; }
+      .toast.loading::after { animation: none; left: 0; width: 100%; opacity: .6; }
     }
     .toast.ok { color: var(--ok); }
     .toast.error { color: var(--err); }
@@ -208,7 +224,9 @@
           <div class="title">${t("menuTitle")}</div>
           <button data-act="json" role="menuitem">${t("btnJson")}</button>
           <button data-act="md" role="menuitem">${t("btnMd")}</button>
+          <button data-act="html" role="menuitem">${t("btnHtml")}</button>
           <button data-act="copy" role="menuitem">${t("btnCopyJson")}</button>
+          <button data-act="bulk" class="bulk" role="menuitem" hidden>${t("bulkExport")}</button>
           <div class="title sep">${t("continueIn")}</div>
           <div class="targets"></div>
           <div class="hint">${t("menuHint")}</div>
@@ -238,6 +256,9 @@
       .filter((t) => !here || t.id !== here.id)
       .map((t) => `<button data-target="${t.id}" role="menuitem">${t.name}</button>`)
       .join("");
+    const bulkBtn = root.querySelector('[data-act="bulk"]');
+    bulkBtn.hidden = !(here && here.bulk);
+    bulkBtn.title = t("bulkHint");
 
     // ---------- Позиция и перетаскивание ----------
     // Пока пользователь не двигал кнопку — она «приклеена» к полю ввода (auto).
@@ -372,11 +393,30 @@
 
     ACE.notify = showToast;
 
+    function applyBulkState(st) {
+      const running = !!st;
+      fab.classList.toggle("busy", running);
+      icon.innerHTML = running ? ICON_SPIN : ICON_DOWNLOAD;
+      label.textContent = running ? (st.total ? `${st.done}/${st.total}` : t("fabBusy")) : t("fabLabel");
+      bulkBtn.textContent = running ? t("bulkCancel") : t("bulkExport");
+      menu.querySelectorAll("button").forEach((b) => (b.disabled = running && b !== bulkBtn));
+      applyPos();
+    }
+    if (ACE.onBulkState) ACE.onBulkState((st) => host && host.isConnected && applyBulkState(st));
+    if (ACE.bulkRunning) applyBulkState(ACE.bulkRunning);
+
     menu.addEventListener("click", async (e) => {
+      if (e.target.closest('[data-act="bulk"]')) {
+        setOpen(false);
+        if (ACE.bulkRunning) ACE.bulkCancel();
+        else ACE.bulkExport();
+        return;
+      }
       const tbtn = e.target.closest("button[data-target]");
       if (tbtn) {
         setOpen(false);
         setBusy(true);
+        showToast(t("progressCollecting"), "loading", 0);
         try {
           const r = await ACE.transferTo(tbtn.dataset.target);
           const long = r.length > 60000 ? "\n" + t("transferLong") : "";
@@ -393,17 +433,33 @@
       const act = btn.dataset.act;
       setOpen(false);
       setBusy(true);
+      showToast(t("progressCollecting"), "loading", 0);
+      // Gemini подгружает историю прокруткой — показываем, сколько уже загружено
+      ACE.extractProgress = (n) => showToast(t("progressLoadingHistory", n), "loading", 0);
       try {
         const chat = await ACE.run();
         const base = ACE.fileBase(chat);
-        if (act === "json") saveFile(ACE.toJson(chat), base + ".json", "application/json");
-        if (act === "md") saveFile(ACE.toMarkdown(chat), base + ".md", "text/markdown");
-        if (act === "copy") await copyText(ACE.toJson(chat));
         const warn = chat.warnings && chat.warnings.length ? `\n⚠ ${chat.warnings.join(" ")}` : "";
-        showToast(t("resultLine", t(act === "copy" ? "copied" : "done"), ACE.messagesWord(chat.message_count)) + warn, warn ? "" : "ok");
+        const count = ACE.messagesWord(chat.message_count);
+        if (act === "copy") {
+          await copyText(ACE.toJson(chat));
+          showToast(t("resultLine", t("copied"), count) + warn, warn ? "" : "ok");
+        } else {
+          const fmt = {
+            json: ["JSON", ".json", "application/json", ACE.toJson],
+            md: ["Markdown", ".md", "text/markdown", ACE.toMarkdown],
+            html: ["HTML", ".html", "text/html", ACE.toHtml],
+          }[act];
+          showToast(t("progressPreparing", fmt[0]), "loading", 0);
+          await ACE.sleep(30); // даём браузеру отрисовать шаг перед сборкой файла
+          const name = base + fmt[1];
+          saveFile(fmt[3](chat), name, fmt[2]);
+          showToast(t("downloadedFile", name, count) + warn, warn ? "" : "ok", 7000);
+        }
       } catch (err) {
         showToast(t("errPrefix", err.message || err), "error", 6000);
       } finally {
+        ACE.extractProgress = null;
         setBusy(false);
       }
     });
@@ -443,8 +499,10 @@
 
   // Показываем кнопку только там, где есть подходящий экстрактор
   // (например, в Google — только в «Режиме ИИ»). Сайты — SPA, поэтому проверяем периодически.
+  let langReady = false;
   function sync() {
-    const show = enabled && !!ACE.findExtractor && !!ACE.findExtractor();
+    if (!langReady) return;
+    const show = (enabled || !!ACE.bulkRunning) && !!ACE.findExtractor && !!ACE.findExtractor();
     if (show && !host) build();
     if (host) {
       if (!host.isConnected) document.documentElement.appendChild(host);
@@ -468,5 +526,17 @@
   } catch (_) {
     sync();
   }
+  // Строим кнопку, когда известен язык; при смене языка в popup — пересобираем с новыми текстами
+  ACE.i18nReady.then(() => {
+    langReady = true;
+    sync();
+  });
+  if (ACE.onBulkState) ACE.onBulkState(() => sync());
+  ACE.onLangChange(() => {
+    if (host) host.remove();
+    host = null;
+    relayout = null;
+    sync();
+  });
   setInterval(sync, 1500);
 })();

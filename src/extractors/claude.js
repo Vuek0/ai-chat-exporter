@@ -29,6 +29,9 @@
     return m.text || "";
   }
 
+  const convUrl = (org, id) =>
+    `/api/organizations/${org}/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true`;
+
   async function viaApi() {
     const id = conversationId();
     if (!id) throw new Error(ACE.t("errNoChatId"));
@@ -36,8 +39,7 @@
     let data = null;
     let lastErr = null;
     for (const org of await orgIds()) {
-      const url = `/api/organizations/${org}/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true`;
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(convUrl(org, id), { credentials: "include" });
       if (res.ok) {
         data = await res.json();
         break;
@@ -45,7 +47,51 @@
       lastErr = `HTTP ${res.status}`;
     }
     if (!data) throw new Error(ACE.t("errClaudeApi", lastErr || ACE.t("noOrgs")));
+    return parseConversation(data, id);
+  }
 
+  // ---------- Массовый экспорт ----------
+  async function bulkOrg() {
+    const org = (await orgIds())[0];
+    if (!org) throw new Error(ACE.t("errClaudeApi", ACE.t("noOrgs")));
+    return org;
+  }
+
+  // Список чатов: chat_conversations_v2 (data + has_more); если его нет — старый список с offset
+  async function listConversations(org) {
+    const byId = new Map();
+    const add = (arr) => {
+      for (const c of arr || []) byId.set(c.uuid, { id: c.uuid, title: c.name, updated_at: c.updated_at });
+    };
+    try {
+      for (let offset = 0; offset < 50000; offset += 100) {
+        const res = await fetch(`/api/organizations/${org}/chat_conversations_v2?limit=100&offset=${offset}`, { credentials: "include" });
+        if (!res.ok) throw ACE.httpError(res.status);
+        const j = await res.json();
+        if (!Array.isArray(j.data)) throw new Error("unexpected v2 format");
+        add(j.data);
+        if (!j.has_more || !j.data.length) break;
+      }
+    } catch (e) {
+      console.warn("[AI Chat Exporter] Claude list v2 unavailable, falling back:", e);
+      for (let offset = 0; offset < 50000; offset += 100) {
+        const res = await fetch(`/api/organizations/${org}/chat_conversations?limit=100&offset=${offset}`, { credentials: "include" });
+        if (!res.ok) throw ACE.httpError(res.status);
+        const arr = await res.json();
+        add(arr);
+        if (!Array.isArray(arr) || arr.length < 100) break;
+      }
+    }
+    return [...byId.values()];
+  }
+
+  async function fetchConversation(id, org) {
+    const res = await fetch(convUrl(org, id), { credentials: "include" });
+    if (!res.ok) throw ACE.httpError(res.status);
+    return parseConversation(await res.json(), id);
+  }
+
+  function parseConversation(data, id) {
     let list = data.chat_messages || [];
     // tree=True отдаёт все ветки — берём ту, что ведёт к текущему листу.
     if (data.current_leaf_message_uuid) {
@@ -80,8 +126,9 @@
       .filter((m) => m.content || (m.attachments && m.attachments.length));
 
     return {
-      title: data.name || document.title,
+      title: data.name || "",
       conversation_id: id,
+      url: `${location.origin}/chat/${id}`,
       model: data.model || null,
       created_at: data.created_at || null,
       method: "api",
@@ -112,7 +159,15 @@
     id: "claude",
     name: "Claude",
     match: (host) => host === "claude.ai",
+    // Массовый экспорт: контекст — id организации, получаем один раз на весь проход
+    bulk: {
+      prepare: bulkOrg,
+      list: (org) => listConversations(org),
+      fetch: (id, org) => fetchConversation(id, org),
+    },
     async extract() {
+      // Не в чате (например, claude.ai/new) — экспортировать нечего, без лишних предупреждений
+      if (!conversationId()) throw new Error(ACE.t("errNoMessages"));
       try {
         const r = await viaApi();
         if (r.messages.length) return r;

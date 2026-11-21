@@ -10,7 +10,7 @@
   "optPageButton": { "message": "Кнопка экспорта на странице чата" },
 
   "statusChecking": { "message": "Проверяю страницу…" },
-  "statusCollecting": { "message": "Собираю сообщения… (для длинных чатов Gemini это может занять время)" },
+  "statusCollecting": { "message": "Подгружаю весь чат Gemini — длинные чаты могут собираться дольше…" },
   "statusOpenChat": { "message": "Откройте чат в ChatGPT, Claude, Gemini или Google AI Mode." },
   "statusGoogleNotAi": { "message": "Это обычный поиск Google. Откройте вкладку «Режим ИИ»." },
   "statusReady": { "message": "Откройте нужный чат и нажмите кнопку." },
@@ -66,5 +66,37 @@
   "mdSource": { "message": "Источник" },
   "mdModel": { "message": "Модель" },
   "mdExported": { "message": "Экспортировано" },
-  "mdMessages": { "message": "Сообщений" }
+  "mdMessages": { "message": "Сообщений" },
+
+  "btnHtml": { "message": "Скачать HTML" },
+  "optLanguage": { "message": "Язык" },
+  "langAuto": { "message": "Авто (как в браузере)" },
+  "madeBy": { "message": "автор" },
+  "reportIssue": { "message": "Сообщить о проблеме" },
+  "htmlSavePdf": { "message": "Сохранить в PDF" },
+  "htmlCredit": { "message": "Экспортировано с помощью" },
+
+  "bulkExport": { "message": "Экспорт всех чатов (ZIP)" },
+  "bulkCancel": { "message": "Остановить экспорт" },
+  "bulkListing": { "message": "Получаю список чатов…" },
+  "bulkProgress": { "message": "Экспортирую чат {0} из {1}…" },
+  "bulkWaitRate": { "message": "Сервис попросил притормозить — жду {0} с…" },
+  "bulkZipping": { "message": "Упаковываю ZIP…" },
+  "bulkDone": { "message": "Готово: в ZIP сохранено чатов — {0}." },
+  "bulkDoneFailed": { "message": "Готово: сохранено чатов — {0}, не удалось — {1} (см. index.json)." },
+  "bulkCancelled": { "message": "Остановлено: в ZIP сохранено {0} из {1} чатов." },
+  "bulkCancelledEmpty": { "message": "Экспорт остановлен до того, как сохранился хоть один чат." },
+  "bulkAllFailed": { "message": "Не удалось экспортировать ни одного чата." },
+  "bulkEmpty": { "message": "В этом аккаунте не найдено чатов." },
+  "bulkNotSupported": { "message": "Массовый экспорт работает в ChatGPT и Claude." },
+  "bulkStarted": { "message": "Экспорт запущен — прогресс показан на странице. Это окно можно закрыть." },
+  "bulkAlreadyRunning": { "message": "Массовый экспорт на этой странице уже идёт." },
+  "bulkHint": { "message": "Все чаты этого аккаунта: JSON + Markdown + index.json" },
+
+  "progressCollecting": { "message": "Собираю сообщения…" },
+  "progressLoadingHistory": { "message": "Подгружаю всю историю чата… загружено: {0}" },
+  "progressPreparing": { "message": "Готовлю файл {0}…" },
+  "downloadedFile": { "message": "Скачан: {0}\n{1}" },
+
+  "langAutoShort": { "message": "Авто" }
 }

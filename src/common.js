@@ -9,6 +9,9 @@
 
   ACE.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // Ошибка HTTP с кодом — массовый экспорт по нему решает, повторять ли запрос (429, 5xx)
+  ACE.httpError = (status) => Object.assign(new Error(ACE.t ? ACE.t("errApiHttp", status) : `HTTP ${status}`), { status });
+
   // Склеивает подряд идущие сообщения одной роли (например, ответ ИИ, разбитый вызовами инструментов).
   ACE.mergeConsecutive = (messages) => {
     const out = [];

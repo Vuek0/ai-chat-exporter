@@ -10,7 +10,7 @@
   "optPageButton": { "message": "Export button on chat pages" },
 
   "statusChecking": { "message": "Checking the page…" },
-  "statusCollecting": { "message": "Collecting messages… (long Gemini chats may take a while)" },
+  "statusCollecting": { "message": "Loading the whole Gemini chat — long chats may take a while…" },
   "statusOpenChat": { "message": "Open a chat in ChatGPT, Claude, Gemini or Google AI Mode." },
   "statusGoogleNotAi": { "message": "This is a regular Google search. Switch to the AI Mode tab." },
   "statusReady": { "message": "Open the chat you need and pick an action." },
@@ -64,5 +64,37 @@
   "mdSource": { "message": "Source" },
   "mdModel": { "message": "Model" },
   "mdExported": { "message": "Exported" },
-  "mdMessages": { "message": "Messages" }
+  "mdMessages": { "message": "Messages" },
+
+  "btnHtml": { "message": "Download HTML" },
+  "optLanguage": { "message": "Language" },
+  "langAuto": { "message": "Auto (browser)" },
+  "madeBy": { "message": "by" },
+  "reportIssue": { "message": "Report an issue" },
+  "htmlSavePdf": { "message": "Save as PDF" },
+  "htmlCredit": { "message": "Exported with" },
+
+  "bulkExport": { "message": "Export all chats (ZIP)" },
+  "bulkCancel": { "message": "Stop export" },
+  "bulkListing": { "message": "Getting the list of chats…" },
+  "bulkProgress": { "message": "Exporting chat {0} of {1}…" },
+  "bulkWaitRate": { "message": "The service asked to slow down — waiting {0} s…" },
+  "bulkZipping": { "message": "Packing the ZIP…" },
+  "bulkDone": { "message": "Done: {0} chats saved to the ZIP." },
+  "bulkDoneFailed": { "message": "Done: {0} chats saved, {1} failed (see index.json)." },
+  "bulkCancelled": { "message": "Stopped: {0} of {1} chats saved to the ZIP." },
+  "bulkCancelledEmpty": { "message": "Export stopped before any chat was saved." },
+  "bulkAllFailed": { "message": "Couldn't export any chat." },
+  "bulkEmpty": { "message": "No chats found in this account." },
+  "bulkNotSupported": { "message": "Bulk export works on ChatGPT and Claude." },
+  "bulkStarted": { "message": "Export started — progress is shown on the page. You can close this window." },
+  "bulkAlreadyRunning": { "message": "Bulk export is already running on this page." },
+  "bulkHint": { "message": "All chats of this account: JSON + Markdown + index.json" },
+
+  "progressCollecting": { "message": "Collecting messages…" },
+  "progressLoadingHistory": { "message": "Loading the full chat history… {0} loaded" },
+  "progressPreparing": { "message": "Preparing the {0} file…" },
+  "downloadedFile": { "message": "Downloaded: {0}\n{1}" },
+
+  "langAutoShort": { "message": "Auto" }
 }

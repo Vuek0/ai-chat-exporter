@@ -9,9 +9,9 @@ A Chrome extension that exports the **full** chat history (every user and AI mes
 | Gemini | gemini.google.com | Reads the page, auto-scrolling up to load the whole chat |
 | Google AI Mode | google.com/search (AI Mode) | Reads the page (answer text only, without image carousels or buttons) |
 
-Export formats: **JSON** (main), **Markdown**, or copy JSON to the clipboard.
+Export formats for a single chat: **JSON** (main), **Markdown**, **HTML** (a styled, readable page with a “Save as PDF” button), or copy JSON to the clipboard.
 
-The interface is available in **English** and **Russian** and follows your Chrome language (English is the default for all other languages). The transfer prompt and Markdown labels use the same language.
+The interface is available in **English** and **Russian**. By default it follows your Chrome language (English for all other languages); you can also pick the language in the popup. The transfer prompt and Markdown/HTML labels use the same language.
 
 ## Installation
 
@@ -37,6 +37,15 @@ About the in-page button:
 - You can hide it with the **Export button on chat pages** checkbox in the popup.
 
 If a chat tab was open before the extension was installed, the popup injects the scripts automatically; if that fails, refresh the page (F5).
+
+## Export all chats at once
+
+On **ChatGPT** and **Claude** you can export every chat in your account into a single ZIP: open the site, then choose **Export all chats (ZIP)** in the Export menu or the popup.
+
+- The ZIP contains `json/` and `markdown/` folders with one file per chat (named `<date>_<title>_<id>`) and an `index.json` with the list of chats and any errors.
+- Progress is shown on the page (`12/200` on the button). You can close the popup while it runs; pick **Stop export** to stop early and still get a ZIP with the chats saved so far.
+- Chats are fetched one by one with a short pause; if the service asks to slow down, the extension waits and retries automatically.
+- ChatGPT project chats are included. Gemini and Google AI Mode don't support bulk export.
 
 ## Continue a chat in another AI
 
@@ -99,6 +108,8 @@ src/content.js           Builds the final export object, talks to the popup
 src/ui.js                Floating in-page export button
 src/transfer.js          Chat transfer: builds the prompt and pastes it into the input
 src/background.js        Opens the target service tab and hands it the prompt
+src/bulk.js              Bulk export of all chats into a ZIP
+src/zip.js               Tiny ZIP writer (built-in deflate, UTF-8 file names)
 popup/                   Extension popup and file downloads
 _locales/                UI translations (en, ru)
 tests/                   Mock pages for testing the converter and the button
@@ -111,6 +122,10 @@ Copy `_locales/en/messages.json` to `_locales/<lang>/messages.json` and translat
 ### Adding a new service
 
 Create `src/extractors/<name>.js` that calls `__ACE__.register({ id, name, match(host), async extract() })`, where `extract` returns `{ title, messages: [{ role, content }] }`. Then add the file and domain to `manifest.json` and the domain check in `popup/popup.js`.
+
+## Author
+
+Made by [Vuek0](https://github.com/Vuek0). Found a bug or have an idea? [Open an issue](https://github.com/Vuek0/ai-chat-exporter/issues).
 
 ## License
 

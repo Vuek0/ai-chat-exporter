@@ -49,7 +49,29 @@
   // На localhost экстрактор ChatGPT не совпадает по домену — включаем его для теста
   __ACE__.extractors[0].match = () => true;
 </script>
+<script src="../src/zip.js"></script>
+<script src="../src/bulk.js"></script>
+<script>
+  // Поддельный массовый экспорт: 6 чатов, на 3-м — один ответ 429, 5-й — ошибка
+  let hits429 = 0;
+  __ACE__.extractors[0].bulk = {
+    prepare: async () => "ctx",
+    list: async () => Array.from({ length: 6 }, (_, i) => ({ id: "id" + i + "abcdefgh", title: "Чат №" + i, updated_at: 1763700000 + i * 86400 })),
+    fetch: async (id) => {
+      await __ACE__.sleep(50);
+      if (id.startsWith("id2") && hits429++ === 0) throw __ACE__.httpError(429);
+      if (id.startsWith("id4")) throw __ACE__.httpError(404);
+      return { title: "Чат " + id.slice(0, 3), url: "https://chatgpt.com/c/" + id, method: "api",
+        messages: [{ role: "user", content: "Вопрос " + id }, { role: "assistant", content: "**Ответ** для " + id }] };
+    },
+  };
+</script>
 <script src="../src/ui.js"></script>
 <script src="../src/transfer.js"></script>
+<script>
+  // Адрес как у настоящего чата ChatGPT (/c/<id>), иначе экспорт ответит «откройте чат».
+  // Меняем после загрузки скриптов, чтобы относительные пути ../src/ уже отработали.
+  history.replaceState(null, "", "/c/test-0000-1111-2222" + location.search);
+</script>
 </body>
 </html>
