@@ -112,7 +112,6 @@ src/bulk.js              Bulk export of all chats into a ZIP
 src/zip.js               Tiny ZIP writer (built-in deflate, UTF-8 file names)
 popup/                   Extension popup and file downloads
 _locales/                UI translations (en, ru)
-tests/                   Mock pages for testing the converter and the button
 ```
 
 ### Adding a translation

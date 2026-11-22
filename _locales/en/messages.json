@@ -1,6 +1,6 @@
 {
   "extName": { "message": "AI Chat Exporter" },
-  "extDescription": { "message": "Export full chat history from ChatGPT, Claude, Gemini and Google AI Mode to JSON or Markdown, and continue a chat in another AI." },
+  "extDescription": { "message": "Export full AI chats from ChatGPT, Claude, Gemini and Google AI Mode to JSON, Markdown or HTML, and continue them in another AI." },
   "actionTitle": { "message": "Export chat" },
 
   "btnJson": { "message": "Download JSON" },
