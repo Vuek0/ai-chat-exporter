@@ -1,5 +1,6 @@
 # AI Chat Exporter
 
+[![Available in the Chrome Web Store](https://img.shields.io/chrome-web-store/v/efnonafgocgfhkkikdakimdojbfblcdb?label=Chrome%20Web%20Store&logo=googlechrome&logoColor=white&color=C2588F)](https://chromewebstore.google.com/detail/ai-chat-exporter/efnonafgocgfhkkikdakimdojbfblcdb)
 A Chrome extension that exports the **full** chat history (every user and AI message, not a summary) from popular AI chat services, and lets you continue a conversation in another AI.
 
 | Service | Site | How messages are collected |
@@ -14,6 +15,10 @@ Export formats for a single chat: **JSON** (main), **Markdown**, **HTML** (a sty
 The interface is available in **English** and **Russian**. By default it follows your Chrome language (English for all other languages); you can also pick the language in the popup. The transfer prompt and Markdown/HTML labels use the same language.
 
 ## Installation
+
+Install it from the **[Chrome Web Store](https://chromewebstore.google.com/detail/ai-chat-exporter/efnonafgocgfhkkikdakimdojbfblcdb)**: click **Add to Chrome**, then pin the extension icon to the toolbar. Updates install automatically.
+
+### From source (for development)
 
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).

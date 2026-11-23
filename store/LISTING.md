@@ -16,7 +16,7 @@
 
 **Summary:** берётся из manifest (`extDescription`), 128 символов.
 
-**Category:** `Productivity` (Workflow & Planning или Tools, если спросит подкатегорию).
+**Category:** `Tools` («Инструменты» в русском интерфейсе Dashboard).
 
 **Language:** English. Русский добавь отдельно кнопкой «Add a language»: ниже есть русская версия описания.
 
